@@ -18,11 +18,11 @@ export interface DiscordWebhookAction {
 }
 
 const MESSAGE_TEMPLATE = `\
-Hey <@&{{action.role}}>, *{{data.game.name}}* Prediction! You have {{data.prediction_window_seconds}} seconds.
+Hey <@&{{{action.role}}}>, *{{{data.game.name}}}* Prediction! You have {{{data.prediction_window_seconds}}} seconds.
 
-**{{data.title}}**
-<:{{action.blue_emoji.name}}:{{action.blue_emoji.id}}> {{data.outcomes.BLUE.title}}
-<:{{action.pink_emoji.name}}:{{action.pink_emoji.id}}> {{data.outcomes.PINK.title}}
+**{{{data.title}}}**
+<:{{{action.blue_emoji.name}}}:{{{action.blue_emoji.id}}}> {{{data.outcomes.BLUE.title}}}
+<:{{{action.pink_emoji.name}}}:{{{action.pink_emoji.id}}}> {{{data.outcomes.PINK.title}}}
 `;
 
 export async function executeDiscordWebhookActionOnCreate(action: DiscordWebhookAction, data: PredictionData): Promise<string | undefined> {
