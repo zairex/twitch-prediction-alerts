@@ -1,10 +1,15 @@
 import * as functions from "firebase-functions";
 import { loadDatabase } from "../database";
-import type { AlertAction, AlertData, PredictionData } from "../types";
+import type { AlertAction, AlertData, OutcomeData, PredictionData } from "../types";
 
 export type DatastoreReference<T> = readonly [id: string, value: T];
 
-export type PredictionEventHandler<A extends AlertAction> = (db: FirebaseFirestore.Firestore, action: DatastoreReference<A>, prediction: DatastoreReference<PredictionData>) => Promise<void>;
+export type PredictionEventHandler<A extends AlertAction> = (
+  db: FirebaseFirestore.Firestore,
+  action: DatastoreReference<A>,
+  prediction: DatastoreReference<PredictionData>,
+  outcomes: readonly OutcomeData[],
+) => Promise<void>;
 
 export type ActionHandlers = {
   readonly [K in AlertAction["kind"]]?: PredictionEventHandler<AlertAction & { readonly kind: K }>;
@@ -12,14 +17,30 @@ export type ActionHandlers = {
 
 type QueryDocumentSnapshots = FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>[];
 
-async function processAllActionsInQuery(docs: QueryDocumentSnapshots, handlers: ActionHandlers, db: FirebaseFirestore.Firestore, dataId: string, data: PredictionData, eventType: "create" | "update") {
+async function processAllActionsInQuery(
+  docs: QueryDocumentSnapshots,
+  handlers: ActionHandlers,
+  db: FirebaseFirestore.Firestore,
+  dataId: string,
+  prediction: PredictionData,
+  eventType: "create" | "update"
+) {
+  const outcomesCollection = db.collection(`prediction/${dataId}/outcomes`);
+  const outcomesSnapshot = await outcomesCollection.get();
+  const outcomes = outcomesSnapshot.docs.map((doc) => {
+    return {
+      ...doc.data(),
+      id: doc.id,
+    } as OutcomeData;
+  }).sort((a, b) => a.index - b.index);
+
   const results = await Promise.allSettled(docs.map((doc) => {
     const alert = doc.data() as AlertData<AlertAction>;
     const handler = handlers[alert.action.kind] as PredictionEventHandler<AlertAction> | undefined;
     if (!handler) {
       throw new Error(`Unable to handle prediction ${eventType} event for ${alert.action.kind} action (id=${doc.id})`);
     }
-    return handler(db, [doc.id, alert.action], [dataId, data]);
+    return handler(db, [doc.id, alert.action], [dataId, prediction], outcomes);
   }));
 
   for (let i = 0; i < results.length; ++i) {

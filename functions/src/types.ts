@@ -14,10 +14,14 @@ export interface GameData {
 
 export type OutcomeColor = "BLUE" | "PINK";
 
+export type OutcomeID = string & { readonly __OutcomeID: unique symbol };
+
 export interface OutcomeData {
+  readonly id: OutcomeID;
   readonly title: string;
   readonly total_points: number;
   readonly total_users: number;
+  readonly index: number;
 }
 
 export interface PredictionData {
@@ -28,10 +32,9 @@ export interface PredictionData {
   readonly ended_at?: Timestamp;
   readonly ended_by?: TwitchUser;
   readonly game: GameData;
-  readonly outcomes: Record<OutcomeColor, OutcomeData>;
   readonly status: "ACTIVE" | "LOCKED" | "RESOLVE_PENDING" | "RESOLVED" | "CANCELED";
   readonly title: string;
-  readonly winning_outcome?: OutcomeColor;
+  readonly winning_outcome_id?: OutcomeID;
   readonly prediction_window_seconds: number;
 }
 
@@ -50,7 +53,7 @@ export function getValueAtLookup(data: PredictionData, lookup: PredictionDataLoo
     case "ended_at": return data.ended_at;
     case "status": return data.status;
     case "title": return data.title;
-    case "winning_outcome": return data.winning_outcome;
+    // case "winning_outcome": return data.winning_outcome;
     case "prediction_window_seconds": return data.prediction_window_seconds;
     case "created_by.id": return data.created_by.id;
     case "created_by.display_name": return data.created_by.display_name;
@@ -58,13 +61,14 @@ export function getValueAtLookup(data: PredictionData, lookup: PredictionDataLoo
     case "ended_by.display_name": return data.ended_by?.display_name;
     case "game.id": return data.game.id;
     case "game.name": return data.game.name;
-    case "outcomes.BLUE.title": return data.outcomes.BLUE.title;
-    case "outcomes.BLUE.total_points": return data.outcomes.BLUE.total_points;
-    case "outcomes.BLUE.total_users": return data.outcomes.BLUE.total_users;
-    case "outcomes.PINK.title": return data.outcomes.PINK.title;
-    case "outcomes.PINK.total_points": return data.outcomes.PINK.total_points;
-    case "outcomes.PINK.total_users": return data.outcomes.PINK.total_users;
+    // case "outcomes.BLUE.title": return data.outcomes.BLUE.title;
+    // case "outcomes.BLUE.total_points": return data.outcomes.BLUE.total_points;
+    // case "outcomes.BLUE.total_users": return data.outcomes.BLUE.total_users;
+    // case "outcomes.PINK.title": return data.outcomes.PINK.title;
+    // case "outcomes.PINK.total_points": return data.outcomes.PINK.total_points;
+    // case "outcomes.PINK.total_users": return data.outcomes.PINK.total_users;
   }
+  return;
 }
 
 export type AlertAction =

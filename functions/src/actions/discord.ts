@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { PredictionData } from "../types";
+import type { OutcomeData, PredictionData } from "../types";
 import { render } from "mustache";
 
 export interface DiscordWebhookAction {
@@ -18,15 +18,16 @@ export interface DiscordWebhookAction {
 }
 
 const MESSAGE_TEMPLATE = `\
-Hey <@&{{{action.role}}}>, *{{{data.game.name}}}* Prediction! You have {{{data.prediction_window_seconds}}} seconds.
+Hey <@&{{{action.role}}}>, *{{{prediction.game.name}}}* Prediction! You have {{{prediction.prediction_window_seconds}}} seconds.
 
-**{{{data.title}}}**
-<:{{{action.blue_emoji.name}}}:{{{action.blue_emoji.id}}}> {{{data.outcomes.BLUE.title}}}
-<:{{{action.pink_emoji.name}}}:{{{action.pink_emoji.id}}}> {{{data.outcomes.PINK.title}}}
+**{{{prediction.title}}}**
+{{#outcomes}}
+<:{{{action.blue_emoji.name}}}:{{{action.blue_emoji.id}}}> ({{index}}) {{{title}}}
+{{/outcomes}}
 `;
 
-export async function executeDiscordWebhookActionOnCreate(action: DiscordWebhookAction, data: PredictionData): Promise<string | undefined> {
-  const content = render(MESSAGE_TEMPLATE, { action, data });
+export async function executeDiscordWebhookActionOnCreate(action: DiscordWebhookAction, prediction: PredictionData, outcomes: readonly OutcomeData[]): Promise<string | undefined> {
+  const content = render(MESSAGE_TEMPLATE, { action, prediction, outcomes });
   const params = {
     content,
     allowed_mentions: {
@@ -63,31 +64,25 @@ interface Embed {
   readonly timestamp?: string;
 }
 
-export async function executeDiscordWebhookActionOnUpdate(action: DiscordWebhookAction, data: PredictionData, messageId: string): Promise<void> {
-  const embeds: Embed[] = [];
-  const totalPoints = data.outcomes.BLUE.total_points + data.outcomes.PINK.total_points;
-  if (data.winning_outcome === "BLUE") {
-    const blueReturn = totalPoints / (data.outcomes.BLUE.total_points + 0.01);
-    embeds.push({
-      title: `<:${action.blue_emoji.name}:${action.blue_emoji.id}> ${data.outcomes.BLUE.title}`,
-      description: `${data.outcomes.BLUE.total_users} users won ${totalPoints} points with a 1:${blueReturn.toFixed(2)} return`,
-      color: 3701503,
-      timestamp: data.ended_at?.toDate().toISOString(),
-    });
-  } else if (data.winning_outcome === "PINK") {
-    const pinkReturn = totalPoints / (data.outcomes.PINK.total_points + 0.01);
-    embeds.push({
-      title: `<:${action.pink_emoji.name}:${action.pink_emoji.id}> ${data.outcomes.PINK.title}`,
-      description: `${data.outcomes.PINK.total_users} users won ${totalPoints} points with a 1:${pinkReturn.toFixed(2)} return`,
-      color: 16056475,
-      timestamp: data.ended_at?.toDate().toISOString(),
-    });
+export async function executeDiscordWebhookActionOnUpdate(action: DiscordWebhookAction, prediction: PredictionData, outcomes: readonly OutcomeData[], messageId: string): Promise<void> {
+  const winningOutcome = outcomes.find((outcome) => outcome.id === prediction.winning_outcome_id);
+  if (!winningOutcome) {
+    console.error(`Unable to find winning_outcome_id=${prediction.winning_outcome_id}`);
+    return;
   }
+  const totalPoints = outcomes.reduce((total, outcome) => total + outcome.total_points, 0);
+  const winningReturn = totalPoints / (winningOutcome.total_points + 0.01);
+  const embed: Embed = {
+    title: `<:${action.blue_emoji.name}:${action.blue_emoji.id}> ${winningOutcome.title}`,
+    description: `${winningOutcome.total_users} users won ${totalPoints} points with a 1:${winningReturn.toFixed(2)} return`,
+    color: 3701503,
+    timestamp: prediction.ended_at?.toDate().toISOString(),
+  };
 
   try {
     await axios(`https://discord.com/api/webhooks/${action.id}/${action.token}/messages/${messageId}`, {
       method: "PATCH",
-      data: { embeds },
+      data: { embeds: [embed] },
     });
   } catch (error) {
     if (axios.isAxiosError(error)) {
