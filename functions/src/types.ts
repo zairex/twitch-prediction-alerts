@@ -42,10 +42,9 @@ export type PredictionDataLookup =
   | Exclude<keyof PredictionData, "created_by" | "ended_by" | "game" | "outcomes">
   | `created_by.${keyof TwitchUser}`
   | `ended_by.${keyof TwitchUser}`
-  | `game.${keyof GameData}`
-  | `outcomes.${OutcomeColor}.${keyof OutcomeData}`;
+  | `game.${keyof GameData}`;
 
-export function getValueAtLookup(data: PredictionData, lookup: PredictionDataLookup): string | Timestamp | number | undefined {
+export function getPredictionValueAtLookup(data: PredictionData, lookup: PredictionDataLookup): string | Timestamp | number | undefined {
   switch (lookup) {
     case "channel_id": return data.channel_id;
     case "created_at": return data.created_at;
@@ -53,7 +52,7 @@ export function getValueAtLookup(data: PredictionData, lookup: PredictionDataLoo
     case "ended_at": return data.ended_at;
     case "status": return data.status;
     case "title": return data.title;
-    // case "winning_outcome": return data.winning_outcome;
+    case "winning_outcome_id": return data.winning_outcome_id;
     case "prediction_window_seconds": return data.prediction_window_seconds;
     case "created_by.id": return data.created_by.id;
     case "created_by.display_name": return data.created_by.display_name;
@@ -61,14 +60,19 @@ export function getValueAtLookup(data: PredictionData, lookup: PredictionDataLoo
     case "ended_by.display_name": return data.ended_by?.display_name;
     case "game.id": return data.game.id;
     case "game.name": return data.game.name;
-    // case "outcomes.BLUE.title": return data.outcomes.BLUE.title;
-    // case "outcomes.BLUE.total_points": return data.outcomes.BLUE.total_points;
-    // case "outcomes.BLUE.total_users": return data.outcomes.BLUE.total_users;
-    // case "outcomes.PINK.title": return data.outcomes.PINK.title;
-    // case "outcomes.PINK.total_points": return data.outcomes.PINK.total_points;
-    // case "outcomes.PINK.total_users": return data.outcomes.PINK.total_users;
   }
-  return;
+}
+
+export type OutcomeDataLookup = keyof OutcomeData;
+
+export function getOutcomeValueAtLookup(data: OutcomeData, lookup: OutcomeDataLookup): string | Timestamp | number | undefined {
+  switch (lookup) {
+    case "id": return data.id;
+    case "index": return data.index;
+    case "title": return data.title;
+    case "total_points": return data.total_points;
+    case "total_users": return data.total_users;
+  }
 }
 
 export type AlertAction =

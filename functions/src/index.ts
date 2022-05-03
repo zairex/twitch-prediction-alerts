@@ -1,5 +1,5 @@
 import { executeDiscordWebhookActionOnCreate, executeDiscordWebhookActionOnUpdate } from "./actions/discord";
-// import { executeGoogleSpreadsheetActionOnUpdate } from "./actions/gsheets";
+import { executeGoogleSpreadsheetActionOnUpdate } from "./actions/gsheets";
 import { processActionsOnPredictionCreate, processActionsOnPredictionUpdate } from "./triggers/firestore";
 
 export const onPredictionCreate = processActionsOnPredictionCreate({
@@ -23,7 +23,7 @@ export const onPredictionUpdate = processActionsOnPredictionUpdate({
       console.error(`Unable to find message_id for ${actionRef[0]} + ${dataRef[0]}`);
     }
   },
-  // google_spreadsheet: async (db, actionRef, dataRef) => {
-  //   await executeGoogleSpreadsheetActionOnUpdate(actionRef[1], dataRef[1]);
-  // },
+  google_spreadsheet: async (db, actionRef, dataRef, outcomes) => {
+    await executeGoogleSpreadsheetActionOnUpdate(actionRef[1], dataRef[1], outcomes);
+  },
 });

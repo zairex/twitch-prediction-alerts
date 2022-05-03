@@ -1,13 +1,16 @@
 import { google, sheets_v4 } from "googleapis";
-import { getValueAtLookup, PredictionData, PredictionDataLookup } from "../types";
+import { getOutcomeValueAtLookup, getPredictionValueAtLookup, OutcomeData, OutcomeDataLookup, PredictionData, PredictionDataLookup } from "../types";
 import { Timestamp } from "@google-cloud/firestore";
+
+type PredictionCellTemplate = PredictionDataLookup | "winning_outcome_index";
 
 export interface GoogleSpreadsheetAction {
   readonly kind: "google_spreadsheet";
   readonly id: string;
   readonly range: string;
   readonly time_zone?: string;
-  readonly row: readonly PredictionDataLookup[];
+  readonly prediction_cells: readonly PredictionCellTemplate[];
+  readonly outcome_cells: readonly OutcomeDataLookup[];
 }
 
 async function loadSheetsApi(): Promise<sheets_v4.Sheets> {
@@ -18,18 +21,34 @@ async function loadSheetsApi(): Promise<sheets_v4.Sheets> {
   return google.sheets({ version: "v4", auth: authClient });
 }
 
-export async function executeGoogleSpreadsheetActionOnUpdate(action: GoogleSpreadsheetAction, data: PredictionData): Promise<void> {
+function formatValue(value: string | number | Timestamp | undefined, timeZone?: string): string {
+  if (typeof value === "undefined") {
+    return "NULL";
+  }
+  if (value instanceof Timestamp) {
+    return value.toDate().toLocaleString("en-US", { timeZone });
+  }
+  return String(value);
+}
+
+export async function executeGoogleSpreadsheetActionOnUpdate(action: GoogleSpreadsheetAction, prediction: PredictionData, outcomes: readonly OutcomeData[]): Promise<void> {
   const api = await loadSheetsApi();
-  const valueStrings = action.row.map((lookup) => {
-    const value = getValueAtLookup(data, lookup);
-    if (typeof value === "undefined") {
-      return "NULL";
-    }
-    if (value instanceof Timestamp) {
-      return value.toDate().toLocaleString("en-US", { timeZone: action.time_zone });
-    }
-    return String(value);
-  });
+  const winningOutcome = outcomes.find((outcome) => outcome.id === prediction.winning_outcome_id);
+  const valueStrings = [
+    ...action.prediction_cells.map((lookup) => {
+      if (lookup === "winning_outcome_index") {
+        return winningOutcome?.index ?? "NULL";
+      }
+      const value = getPredictionValueAtLookup(prediction, lookup);
+      return formatValue(value, action.time_zone);
+    }),
+    ...outcomes.map((outcome) => {
+      return action.outcome_cells.map((lookup) => {
+        const value = getOutcomeValueAtLookup(outcome, lookup);
+        return formatValue(value, action.time_zone);
+      });
+    }).flat(),
+  ];
   await api.spreadsheets.values.append({
     spreadsheetId: action.id,
     insertDataOption: "INSERT_ROWS",
@@ -40,4 +59,3 @@ export async function executeGoogleSpreadsheetActionOnUpdate(action: GoogleSprea
     },
   });
 }
-
