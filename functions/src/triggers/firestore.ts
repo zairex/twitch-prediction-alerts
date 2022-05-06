@@ -25,7 +25,7 @@ async function processAllActionsInQuery(
   prediction: PredictionData,
   eventType: "create" | "update"
 ) {
-  const outcomesCollection = db.collection(`prediction/${dataId}/outcomes`);
+  const outcomesCollection = db.collection(`predictions/${dataId}/outcomes`);
   const outcomesSnapshot = await outcomesCollection.get();
   const outcomes = outcomesSnapshot.docs.map((doc) => {
     return {
