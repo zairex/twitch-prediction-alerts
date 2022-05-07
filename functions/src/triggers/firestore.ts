@@ -54,6 +54,7 @@ async function processAllActionsInQuery(
 export function processActionsOnPredictionCreate(handlers: ActionHandlers) {
   const kinds = Object.keys(handlers) as readonly AlertAction["kind"][];
   return functions.firestore.document("predictions/{prediction_id}").onCreate(async (snapshot) => {
+    console.log(`onCreate:predictions/${snapshot.id}`);
     const prediction = snapshot.data() as PredictionData;
 
     const db = loadDatabase();
@@ -75,6 +76,7 @@ export function processActionsOnPredictionCreate(handlers: ActionHandlers) {
 export function processActionsOnPredictionUpdate(handlers: ActionHandlers) {
   const kinds = Object.keys(handlers) as readonly AlertAction["kind"][];
   return functions.firestore.document("predictions/{prediction_id}").onUpdate(async (change) => {
+    console.log(`onUpdate:predictions/${change.before.id}`);
     const predictionBefore = change.before.data() as PredictionData;
     const predictionAfter = change.after.data() as PredictionData;
     if (predictionBefore.status === predictionAfter.status) {
