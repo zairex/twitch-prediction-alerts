@@ -2,19 +2,25 @@ import axios from "axios";
 import type { OutcomeData, PredictionData } from "../types";
 import { render } from "mustache";
 
+export type OutcomeEmoji = [
+  outcome1: string,
+  outcome2: string,
+  outcome3: string,
+  outcome4: string,
+  outcome5: string,
+  outcome6: string,
+  outcome7: string,
+  outcome8: string,
+  outcome9: string,
+  outcome10: string,
+];
+
 export interface DiscordWebhookAction {
   readonly kind: "discord_webhook";
   readonly id: string;
   readonly token: string;
   readonly role: string;
-  readonly blue_emoji: {
-    readonly name: string;
-    readonly id: string;
-  };
-  readonly pink_emoji: {
-    readonly name: string;
-    readonly id: string;
-  };
+  readonly emoji: OutcomeEmoji;
 }
 
 const MESSAGE_TEMPLATE = `\
@@ -22,12 +28,22 @@ Hey <@&{{{action.role}}}>, *{{{prediction.game.name}}}* Prediction! You have {{{
 
 **{{{prediction.title}}}**
 {{#outcomes}}
-<:{{{action.blue_emoji.name}}}:{{{action.blue_emoji.id}}}> ({{index}}) {{{title}}}
+{{{emoji}}} {{{title}}}
 {{/outcomes}}
 `;
 
 export async function executeDiscordWebhookActionOnCreate(action: DiscordWebhookAction, prediction: PredictionData, outcomes: readonly OutcomeData[]): Promise<string | undefined> {
-  const content = render(MESSAGE_TEMPLATE, { action, prediction, outcomes });
+  const content = render(MESSAGE_TEMPLATE, {
+    action,
+    prediction,
+    outcomes: outcomes.map((outcome) => {
+      const emojiId = action.emoji[outcome.index - 1];
+      return {
+        ...outcome,
+        emoji: `<:blue${outcome.index}:${emojiId}>`,
+      };
+    }),
+  });
   const params = {
     content,
     allowed_mentions: {
@@ -59,7 +75,7 @@ export async function executeDiscordWebhookActionOnUpdate(action: DiscordWebhook
   const totalPoints = outcomes.reduce((total, outcome) => total + outcome.total_points, 0);
   const winningReturn = totalPoints / (winningOutcome.total_points + 0.01);
   const embed: Embed = {
-    title: `<:${action.blue_emoji.name}:${action.blue_emoji.id}> ${winningOutcome.title}`,
+    title: `<:blue${winningOutcome.index}:${action.emoji[winningOutcome.index - 1]}> ${winningOutcome.title}`,
     description: `${winningOutcome.total_users} users won ${totalPoints} points with a 1:${winningReturn.toFixed(2)} return`,
     color: 3701503,
     timestamp: prediction.ended_at?.toDate().toISOString(),
